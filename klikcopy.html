@@ -1,0 +1,367 @@
+<center>
+<style type="text/css">                                                                                                                                                                                                                    
+body {
+	font-family: Arial;
+	font-size: 20px;
+}
+table {
+	width: 50%;
+	font: inherit;
+	border-collapse: collapse;
+	border: solid 1px #999;
+}
+
+td:nth-child(1),
+td:nth-child(2),
+td:nth-child(3) {
+	text-align: center;
+}
+
+.clickable,
+td:nth-child(2),
+td:nth-child(3),
+td:nth-child(1){
+	cursor: pointer;
+	color: #00a157;
+}
+
+th {
+	font-size: 16px;
+	text-align: left;
+}
+
+th, td {
+	border: solid 1px #999;
+	padding: 5px;
+}
+
+@keyframes blink {
+     0% {opacity: 0}
+     49%{opacity: 0}
+     50% {opacity: 1}
+ }
+
+.blink {
+	animation: blink .2s infinite;
+	position: relative;
+}
+
+.blink:after {
+	/*position: absolute;*/
+	content: '';
+	color: red;
+	/*position: absolute;*/
+	/*left: 0;*/
+	/*top: 0;*/
+}
+
+#inputContainer {
+	position: relative;
+	width: 100%;
+	box-sizing: border-box;
+	display: flex;
+	gap: 10px;
+	padding: 10px 0;
+}
+
+#input {
+	flex: 1;
+}
+
+th:last-child,
+td:last-child {
+	width: 35px;
+	text-align: center;
+}
+
+input[type="checkbox"] {
+	transform: scale(1.5);
+}
+
+tr.disabled td:not(:last-child) {
+	color: #999 !important;
+	pointer-events: none;
+    opacity: .5;
+}
+
+tr.select-hint td,
+td.select-hint {
+	cursor: pointer;
+	background: #cecece;
+}
+
+tr.large-amount td {
+	color: red;
+}
+</style>
+
+<div id="result">
+	<table>
+		<thead>
+			<tr>
+				<th><center>BANK WD</th></center>
+				<th><center>PIN LOGIN</th></center>
+				<th>PIN TT</th>
+			</tr>
+		</thead>
+		<tbody id="rows"><tr><td>BCA</td><td>Asd123</td><td class="">258159</td>
+	    <tr><td>BRI</td><td>Zz168168<td>111444</td>
+		<tr><td>MANDIRI</td><td>Aabbcc168168<td>111444</td>
+		<tr><td>BNI</td><td>168168<td>Aa168168</td>		
+		<tr><td><th>KODE EWALET</th>
+		<tr><td>OVO</td><td>39358</td><td class=""></td>
+		<tr><td>DANA</td><td>3901</td><td class=""></td>
+		<tr><td>GOPAY </td><td>70001</td><td class=""></td>
+		<tr><td>LINKAJA</td><td>09110</td><td class=""></td>
+		<tr>
+		<th><center>TOKO QRIS</th></center>
+		<th><center>MAIL LOGIN</th></center>
+				<th>PAWORD LOGIN</th>
+			</tr>
+	    <tr><td>TOKO SAKSAMA QRIS</td><td>i35348705@gmail.com</td><td class="">Aa168168+</td>
+		<tr><td>TOKO MULTI NIAGA QRIS</td><td>i35348705@gmail.com</td><td class="">Aa168168+</td></td>
+		</tbody>
+	</table>
+</div>
+
+
+<pre id="dump"></pre>
+
+
+<script type="text/javascript">
+	console.clear();
+	const dumpContainer = document.getElementById('dump'), rowsContainer = document.getElementById('rows');
+	const dump = (...o) => dumpContainer.innerText += JSON.stringify(o) + "\n";
+
+	const copyCommandSupported = !!navigator.clipboard || (document.queryCommandSupported('copy'));
+	console.log(copyCommandSupported);
+
+	function fallbackCopyTextToClipboard(text) {
+		const textArea = document.createElement("textarea");
+		textArea.value = text;
+
+		// Avoid scrolling to bottom
+		textArea.style.top = "0";
+		textArea.style.left = "0";
+		textArea.style.position = "fixed";
+		textArea.style.opacity = "0";
+
+		document.body.appendChild(textArea);
+		textArea.focus();
+		textArea.select();
+
+		try {
+			const successful = document.execCommand('copy');
+			const msg = successful ? 'successful' : 'unsuccessful';
+			console.log('Fallback: Copying text command was ' + msg);
+		} catch (err) {
+			console.error('Fallback: Oops, unable to copy', err);
+		}
+
+		document.body.removeChild(textArea);
+	}
+
+	function selectText(node) {
+		// node = document.getElementById(node);
+
+		// console.log(node);
+		if (document.body.createTextRange) {
+			const range = document.body.createTextRange();
+			range.moveToElementText(node);
+			range.select();
+		} else if (window.getSelection) {
+			const selection = window.getSelection();
+			const range = document.createRange();
+			range.selectNodeContents(node);
+			selection.removeAllRanges();
+			selection.addRange(range);
+		} else {
+			console.warn("Could not select text in node: Unsupported browser.");
+		}
+	}
+
+	let blinker;
+	const responseToHide = function(target){
+		const row = target.closest('tr');
+		if(target.checked){
+			row.classList.add('disabled');
+		} else {
+			row.classList.remove('disabled');
+		}
+	}
+	rowsContainer.onclick = function(ev){
+		const target = ev.target;
+		// console.log(ev);
+		if(ev.ctrlKey || ev.metaKey){
+			const node = ev.shiftKey ? target.closest('tr') : target.closest('td');
+			selectText(node);
+			return false;
+		}
+
+		if(target.matches('input[type="checkbox"]')){
+			responseToHide(target);
+			return true;
+		}
+
+		if(!target.matches('.clickable, td:nth-child(1), td:nth-child(2), td:nth-child(3)')){
+			return false;
+		}
+		if(!copyCommandSupported){
+			alert('Browser Anda tidak mengizinkan fitur (automated) copy');
+			return;
+		}
+
+		Array.prototype.forEach.call(document.querySelectorAll('.blink'), (d) => {
+			d.classList.remove('blink');
+		});
+
+		let text = target.innerText;
+		// if start with number
+		if(text.match(/^[0-9].*?/)) {
+			// remove all non number
+			text = target.innerText.replaceAll(/[^0-9]/g, '');
+		}
+
+		if(navigator.clipboard) {
+			navigator.clipboard.writeText(text);
+		} else {
+			fallbackCopyTextToClipboard(text);
+		}
+
+		target.classList.add('blink');
+		setTimeout(() => {
+			target.classList.remove('blink');
+		}, 1000);
+
+		return false;
+	};
+
+	function clearBorderHint(){
+		Array.prototype.forEach.call(document.querySelectorAll('.select-hint'), (el) => {
+			el.classList.remove('select-hint');
+		})
+	}
+
+	rowsContainer.onmousemove = function(ev){
+		if(ev.ctrlKey || ev.metaKey){
+			const target = ev.shiftKey ? ev.target.closest('tr') : ev.target.closest('td');
+			if(target.classList.contains("select-hint")){
+				return;
+			}
+			clearBorderHint();
+			target.classList.add('select-hint');
+		} else {
+			clearBorderHint();
+		}
+	};
+
+	const parseLine = (line) => {
+		const data = [
+			//index
+			line[0].split(/\s+/)[0],
+
+			//balance
+			line[1].split(/\s+/)[4] + ' ' + line[2],
+
+			// dateCell
+			line[1].split(/\s+/).slice(0, 3).join(' '),
+
+			// user
+			line[0].split(/\s+/)[1],
+
+			//amount
+			line[1].split(/\s+/)[3],
+		];
+
+		const bank = (line[3]).split(', ');
+		bank[1] = `<span class='clickable' title='Klik untuk meng-copy teks ${bank[1]}'>${bank[1]}</span>`;
+		bank[2] = `<span class='clickable' title='Klik untuk meng-copy teks ${bank[2]}'>${bank[2]}</span>`;
+		// data.push(bank.join(', '));
+		data.push(bank[0]);
+		data.push(bank[1]);
+		data.push(bank[2]);
+
+		data.push('<input type="checkbox" value="1" name="cb"/>');
+		data.push('<button class="btn-delete">Delete</button>');
+
+		let row = document.createElement('tr');
+		rowsContainer.appendChild(row);
+		data.forEach((cell, i) => {
+			const td = document.createElement('td');
+			td.innerHTML = cell;
+			if(i === 4){
+				const amount = cell.replaceAll(/[^0-9]/g, '')|0;
+				// console.log(amount);
+				if(amount >= 1_000_000) {
+					row.classList.add('large-amount');
+				}
+			}
+
+			row.appendChild(td);
+		})
+	}
+
+	const inp = document.getElementById('input');
+	/*
+	const sample = window.atob('Tm8gCQlVc2VyIAlEYXRlIAlBbW91bnQgCUJhbGFuY2UgCUJhbmsgQXNhbAoxCQlrZW1lbTIxCldpdGhkcmF3CTIwMjEtMTItMDEgMTQ6NTY6NTUJMSwzMDAsMDAwIAkyMDcsNjIyCkcyCglNQU5ESVJJLCAxNTYwMDE3MDc5NDk0LCBEaWRpIHJhaG1hdAoyCQlkYWRvMTk3NwpXaXRoZHJhdwkyMDIxLTEyLTAxIDE0OjU3OjA0CTUwLDAwMCAJMjE1LjgyCkcyCglCSUksIDEwNDQ1MTA0MzksIEFITUFEIFRFVEVOIFNPTElISU4KMwkJYmFsYXUxOApXaXRoZHJhdwkyMDIxLTEyLTAxIDE0OjU4OjAyCTE1MCwwMDAgCTcyMS4xMwpHMgoJTUFORElSSSwgMTE0MDAyMTkxMzA2OSwgSU5EUkEgR1VOQVdBTgo0CQltdWx5YXRpNApXaXRoZHJhdwkyMDIxLTEyLTAxIDE0OjU4OjMwCTEsMDAwLDAwMCAJMjQ1LDQzNwpHMgoJTUFORElSSSwgMTQwMDAxMzU4MjY3MiwgRHVzaWtpbgo1CQlvbmVhbApXaXRoZHJhdwkyMDIxLTEyLTAxIDE0OjU5OjM1CTE3MCwwMDAgCTQsMDI5LjM5CkcyCglNQU5ESVJJLCAxNDgwMDA0NDE0MDg1LCBST05BTCBBU0JPTgo2CQloYW5qYWx6CldpdGhkcmF3CTIwMjEtMTItMDEgMTU6MDE6MjEJMTAwLDAwMCAJMTcsODAwLjUwCkcyCglNQU5ESVJJLCAxNzcwMDExNDYyMzUyLCBJbmRyYSBtYXVsYW5hCjcJCWltdW5nMTgKV2l0aGRyYXcJMjAyMS0xMi0wMSAxNTowMTozOAkxMDAsMDAwIAk3Miw1NzQuODUKRzIKCU1BTkRJUkksIDE1NjAwMTIyMDI2NzksIE1VTFlBIFNBTVNVREkKOAkJZm9vZDAxMgpXaXRoZHJhdwkyMDIxLTEyLTAxIDE1OjAzOjM4CTY1MCwwMDAgCTQwMCw1MzAKRzEKCU1BTkRJUkksIDEzMjAwMTg4NTkwNjcsIFJhbmkKOQkJZGVkaW1haGVuZHJhCldpdGhkcmF3CTIwMjEtMTItMDEgMTU6MDM6NDcJMTAwLDAwMCAJNTIsNzY0LjAyCkcyCglNQU5ESVJJLCAxNjUwMDAyMDgzNzE2LCBERURJIE1BSEVORFJBCjEwCQl0dWthbmdrZW50b3QKV2l0aGRyYXcJMjAyMS0xMi0wMSAxNTowNToyNgk5MDAsMDAwIAkyNDUsNjUzLjUwCkcyCglNQU5ESVJJLCAxNzIwMDAyNzUzMjY5LiwgWEIgUkVZTU9ORCBBTEVYQU5ERVIgWEIKMTEJCXNta2luZzEzNQpXaXRoZHJhdwkyMDIxLTEyLTAxIDE1OjA4OjI5CTIsMDAwLDAwMCAJMTE2LjAzCkcyCglNQU5ESVJJLCAxODAwMDA2ODM3MjA5LCBGRVJJIFBSQVlPR08KMTIJCW1hbGF5Y2lrb2tvCldpdGhkcmF3CTIwMjEtMTItMDEgMTU6MDk6MTEJMTAwLDAwMCAJMTEsMDk1LjYxCkcyCglNQU5ESVJJLCAxMjQwMDEwMTA1NzI1LCBJU01BSUwKMTMJCXNpZ3NvZnQKV2l0aGRyYXcJMjAyMS0xMi0wMSAxNToxMDoyNgkxMDAsMDAwIAkzMzAKRzIKCU1BTkRJUkksIDkwMDAwMzczMTQ5MzgsIFNJR0lUIEFSSUJBU1RPTUkKMTQJCXNlcHVyMTIzNApXaXRoZHJhdwkyMDIxLTEyLTAxIDE1OjEwOjQ3CTMwMCwwMDAgCTg0LDkwNgpHMgoJTUFORElSSSwgMTM5MDAxOTU5NTcyMSwgVElUTyBXQUhZT05PCjE1CQlsYW1waW9uCldpdGhkcmF3CTIwMjEtMTItMDEgMTU6MTI6MTIJNTAwLDAwMCAJMTM2LDI2OS4zOApHMgoJTUFORElSSSwgMTMxMDAxODE1MjQ5OCwgSkFKQU5HIEpBTUFMVURJTgoxNgkJaGlydWthCldpdGhkcmF3CTIwMjEtMTItMDEgMTU6MTM6MDYJMTA2LDAwMCAJMTMyCkcyCglNQU5ESVJJLCAxMDEwMDExMTIyODA5LCBSaXpreSBtb2NoIHJob21hZG9uCjE3CQliaW1hMTk4OQpXaXRoZHJhdwkyMDIxLTEyLTAxIDE1OjEzOjIyCTEsMzAwLDAwMCAJNDA3LDA2NwpHMgoJTUFORElSSSwgMTM3MDAxMjY1OTI1MiwgSGFuZGkgcHJheWl0bm8g');
+	inp.value = sample;
+	// */
+
+	inp.onfocus = function(){
+		this.select();
+	};
+	function doParse(){
+		rowsContainer.innerHTML = '';
+		const lines = inp.value.split("\n");
+		const start = lines[0].split(/\s+/)[0].trim() == 'No' ? 1 : 0;
+		for (let i = start; i < lines.length; i += 4) {
+			let part = lines.slice(i, i + 4);
+			part = part.reduce((a, p) => {
+				a.push(p.replace(/\s+/g, ' ').trim());
+				return a;
+			}, []);
+
+			parseLine(part);
+		}
+		inp.removeAttribute('style');
+	}
+	document.getElementById('btn-parse').onclick = function(ev) {
+		doParse();
+	};
+	inp.onpaste = function(ev){
+		setTimeout(() => {
+			doParse();
+		}, 50);
+	};
+	(function(){
+		let lastCheckbox = null;
+		document.addEventListener('click', function(e){
+			const target = e.target;
+			if(target.matches('.btn-delete')){
+				const row = target.closest('tr');
+				row.parentNode.removeChild(row);
+				return;
+			}
+			if(!target.matches('input[name="cb"]')){
+				return;
+			}
+
+			if(lastCheckbox) {
+				if (e.shiftKey) {
+					const checkboxes = Array.from(document.querySelectorAll('input[name="cb"]'));
+					const start = checkboxes.indexOf(target);
+					const end = checkboxes.indexOf(lastCheckbox);
+					let s = Math.min(start, end), e = Math.max(start, end) + 1;
+					for (; s < e; s++) {
+						checkboxes[s].checked = lastCheckbox.checked;
+						responseToHide(checkboxes[s]);
+					}
+				}
+			}
+			console.log(lastCheckbox);
+			lastCheckbox = target;
+		});
+	})();	 
+</script>
+ </center>
+
